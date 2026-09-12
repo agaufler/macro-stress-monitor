@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Macro Stress Monitor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, 'Inter', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+header { background: #161b22; border-bottom: 1px solid #30363d; padding: 1.2rem 2rem; }
+header h1 { font-size: 1.5rem; font-weight: 700; color: #f0f6fc; margin-bottom: 0.2rem; }
+header .subtitle { font-size: 0.85rem; color: #8b949e; }
+.topbar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.badge { font-size: 0.75rem; padding: 0.2rem 0.7rem; border-radius: 20px; font-weight: 600; }
+.badge-green  { background: #3fb95022; color: #3fb950; border: 1px solid #3fb95044; }
+.badge-yellow { background: #fbbf2422; color: #fbbf24; border: 1px solid #fbbf2444; }
+.badge-red    { background: #f8514922; color: #f85149; border: 1px solid #f8514944; }
+.updated { font-size: 0.78rem; color: #4a5568; margin-left: auto; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.1rem; }
+.card .label { font-size: 0.72rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+.card .value { font-size: 1.6rem; font-weight: 700; color: #f0f6fc; }
+.card .change { font-size: 0.8rem; margin-top: 0.2rem; }
+.up { color: #3fb950; } .down { color: #f85149; } .neutral { color: #8b949e; }
+
+.section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #fbbf24; margin: 2rem 0 0.8rem; font-weight: 600; }
+.chart-section { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+.chart-section h2 { font-size: 1.05rem; color: #f0f6fc; margin-bottom: 0.3rem; }
+.chart-section .desc { font-size: 0.82rem; color: #8b949e; margin-bottom: 1.2rem; line-height: 1.5; }
+.chart-wrap { position: relative; height: 280px; }
+
+.alert-box { border-radius: 8px; padding: 1rem 1.3rem; margin-bottom: 1.5rem; }
+.alert-red    { background: #f8514911; border: 1px solid #f8514944; }
+.alert-yellow { background: #fbbf2411; border: 1px solid #fbbf2444; }
+.alert-green  { background: #3fb95011; border: 1px solid #3fb95044; }
+.alert-box h4 { font-size: 0.9rem; margin-bottom: 0.3rem; }
+.alert-red h4    { color: #f85149; }
+.alert-yellow h4 { color: #fbbf24; }
+.alert-green h4  { color: #3fb950; }
+.alert-box p  { font-size: 0.82rem; color: #8b949e; line-height: 1.5; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+
+footer { text-align: center; padding: 1.5rem; font-size: 0.78rem; color: #4a5568; border-top: 1px solid #30363d; margin-top: 1rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="topbar">
+    <div>
+      <h1>📉 Macro Stress Monitor</h1>
+      <div class="subtitle">Yield curve · Debt · Sentiment · Oil · Yen · Credit spreads · Money supply</div>
+    </div>
+    <span class="badge badge-yellow" id="status-badge">Loading…</span>
+    <span class="updated" id="updated-ts"></span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Summary Cards -->
+  <div class="cards">
+    <div class="card">
+      <div class="label">S&amp;P 500</div>
+      <div class="value" id="c-sp500">—</div>
+      <div class="change" id="c-sp500-chg"></div>
+    </div>
+    <div class="card">
+      <div class="label">10yr Treasury</div>
+      <div class="value" id="c-dgs10">—</div>
+      <div class="change" id="c-dgs10-chg"></div>
+    </div>
+    <div class="card">
+      <div class="label">2yr Treasury</div>
+      <div class="value" id="c-dgs2">—</div>
+      <div class="change" id="c-dgs2-chg"></div>
+    </div>
+    <div class="card">
+      <div class="label">USD/JPY</div>
+      <div class="value" id="c-jpy">—</div>
+      <div class="change" id="c-jpy-chg"></div>
+    </div>
+    <div class="card">
+      <div class="label">WTI Crude</div>
+      <div class="value" id="c-wti">—</div>
+      <div class="change" id="c-wti-chg"></div>
+    </div>
+    <div class="card">
+      <div class="label">HY Credit Spread</div>
+      <div class="value" id="c-hy">—</div>
+      <div class="change" id="c-hy-chg"></div>
+    </div>
+    <div class="card">
+      <div class="label">UMich Sentiment</div>
+      <div class="value" id="c-umich">—</div>
+      <div class="change" id="c-umich-chg"></div>
+    </div>
+    <div class="card">
+      <div class="label">M2 Money Supply</div>
+      <div class="value" id="c-m2">—</div>
+      <div class="change" id="c-m2-chg"></div>
+    </div>
+    <div class="card" style="border-color:#f8514966;">
+      <div class="label">Total US Debt</div>
+      <div class="value" id="c-debt" style="color:#f85149;">—</div>
+      <div class="change" id="c-debt-sub" style="font-size:0.78rem;color:#8b949e;"></div>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div id="alerts"></div>
+
+  <!-- Section 1: Yield Curve -->
+  <div class="section-label">📐 Yield Curve</div>
+  <div class="chart-section">
+    <h2>Treasury Yields — 3mo / 2yr / 10yr / 30yr</h2>
+    <div class="desc">When short-term yields exceed long-term yields, the curve is <strong>inverted</strong> — historically the most reliable recession signal, typically 6–18 months ahead. Watch for 2yr > 10yr.</div>
+    <div class="chart-wrap"><canvas id="chart-yield"></canvas></div>
+  </div>
+
+  <!-- Section 1b: Fed vs Market rates -->
+  <div class="grid2">
+    <div class="chart-section">
+      <h2>🏦 Fed Controls: Fed Funds Rate vs. T-Bills</h2>
+      <div class="desc">The Fed sets the overnight rate. T-Bills (short-term, &lt;1yr) follow it almost immediately. This is the rate you hear about at Fed press conferences. Currently <strong id="dff-current">—</strong> — being cut slowly after peaking near 5.5%.</div>
+      <div class="chart-wrap"><canvas id="chart-fed"></canvas></div>
+    </div>
+    <div class="chart-section">
+      <h2>📈 Market Controls: 2yr / 10yr / 30yr Treasury Yields</h2>
+      <div class="desc">The market sets these based on inflation expectations, growth outlook, and supply/demand. The Fed can influence but not dictate. When 10yr &gt; 2yr, curve is normal. When 2yr &gt; 10yr, it’s inverted — recession signal.</div>
+      <div class="chart-wrap"><canvas id="chart-market-rates"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-section">
+    <h2>📈 Total US Gross Debt Over Time ($T)</h2>
+    <div class="desc">Gross federal debt — everything the US government owes, including intragovernmental debt (Social Security trust fund, etc.). Crossed $36T in 2025. Adding roughly $1T every 90–100 days.</div>
+    <div class="chart-wrap" style="height:220px"><canvas id="chart-total-debt"></canvas></div>
+  </div>
+  <div class="chart-section">
+    <h2>💰 How Much Debt Is In Each Bucket?</h2>
+    <div class="desc">T-Notes (2-10yr) are the biggest chunk at <strong>$14.7T</strong>. T-Bills (<strong>$5.8T</strong>) roll over constantly — refinanced at current rates every few weeks. T-Bonds <strong>$4.5T</strong>, TIPS <strong>$2.0T</strong>, FRNs <strong>$600B</strong>. Blue = Fed-influenced. Yellow/Red = market-set.</div>
+    <div class="chart-wrap" style="height:220px"><canvas id="chart-debt-breakdown"></canvas></div>
+  </div>
+
+  <!-- Section 2: Sentiment vs S&P -->
+  <div class="section-label">😟 Main Street vs. Wall Street</div>
+  <div class="chart-section">
+    <h2>UMich Consumer Sentiment vs. S&P 500 (Indexed to 100)</h2>
+    <div class="desc">When stocks soar but consumers feel terrible, the market is disconnected from reality. One of them is wrong — and historically it's the market that corrects.</div>
+    <div class="chart-wrap"><canvas id="chart-sentiment"></canvas></div>
+  </div>
+
+  <!-- Section 3: Oil -->
+  <div class="section-label">🛢️ Energy Markets</div>
+  <div class="grid2">
+    <div class="chart-section">
+      <h2>WTI Crude vs. XLE (Indexed)</h2>
+      <div class="desc">Energy stocks vs. actual oil price. When XLE runs ahead of WTI, stocks are pricing in optimism the commodity doesn't support.</div>
+      <div class="chart-wrap"><canvas id="chart-oil"></canvas></div>
+    </div>
+    <div class="chart-section">
+      <h2>WTI Crude — Price per Barrel</h2>
+      <div class="desc">Raw WTI spot price in USD. Currently at <span id="wti-current">—</span>/bbl.</div>
+      <div class="chart-wrap"><canvas id="chart-wti-raw"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Section 4: Debt -->
+  <div class="section-label">💸 National Debt</div>
+  <div class="chart-section">
+    <h2>US National Debt vs. GDP (Debt-to-GDP Ratio)</h2>
+    <div class="desc">Raw debt numbers are hard to interpret — $39 trillion sounds big but context matters. Debt-to-GDP above 100% means the country owes more than it produces in a year. The US crossed that threshold and hasn't looked back.</div>
+    <div class="chart-wrap"><canvas id="chart-debt"></canvas></div>
+  </div>
+
+  <!-- Section 5: Yen + Credit -->
+  <div class="section-label">🌏 Global Risk Signals</div>
+  <div class="grid2">
+    <div class="chart-section">
+      <h2>USD/JPY — Yen Carry Trade Signal</h2>
+      <div class="desc">Japan's low interest rates let traders borrow cheap yen, invest in higher-yield assets. When JPY strengthens rapidly (USD/JPY falls), the carry trade unwinds — triggering global sell-offs. Aug 2024 was a warning shot.</div>
+      <div class="chart-wrap"><canvas id="chart-jpy"></canvas></div>
+    </div>
+    <div class="chart-section">
+      <h2>High-Yield Credit Spread (OAS)</h2>
+      <div class="desc">The extra yield junk bonds pay over Treasuries. Spikes when credit markets smell trouble — often before stocks react. Below 3% = complacency. Above 6% = stress. Above 10% = crisis.</div>
+      <div class="chart-wrap"><canvas id="chart-hy"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Section 5b: Foreign Holdings -->
+  <div class="section-label">🌍 Foreign Holdings of US Debt</div>
+  <div class="chart-section">
+    <h2>Who Holds US Treasury Debt — Top 8 Countries ($B)</h2>
+    <div class="desc">Current holdings by major foreign creditors. Japan and China have both been <strong>selling</strong> Treasuries. When major holders exit, bond prices fall and yields rise — increasing US borrowing costs.</div>
+    <div class="chart-wrap"><canvas id="chart-tic-bar"></canvas></div>
+  </div>
+  <div class="grid2">
+    <div class="chart-section">
+      <h2>Japan vs. China — Treasury Holdings Over Time ($B)</h2>
+      <div class="desc">Japan overtook China as the #1 holder. Both are reducing exposure. China was at $1.03T in Jan 2022 — now at $859B. A continued exit = upward pressure on US yields.</div>
+      <div class="chart-wrap"><canvas id="chart-tic-line"></canvas></div>
+    </div>
+    <div class="chart-section">
+      <h2>Trend Since Jan 2022 (Change in $B)</h2>
+      <div class="desc">Net change in holdings from Jan 2022 to latest. Green = buying. Red = selling. The selling trend from Japan and China is structural, not a blip.</div>
+      <div class="chart-wrap"><canvas id="chart-tic-trend"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Section 6: M2 -->
+  <div class="section-label">🖨️ Money Supply</div>
+  <div class="chart-section">
+    <h2>M2 Money Supply ($B)</h2>
+    <div class="desc">Total money in circulation. The Fed printed ~$5 trillion during COVID (2020–2022), inflating asset prices. It's now slowly contracting. M2 growth correlates with stock prices ~6 months later — watch the trend.</div>
+    <div class="chart-wrap"><canvas id="chart-m2"></canvas></div>
+  </div>
+
+</div>
+
+<footer>Macro Stress Monitor · Data: Yahoo Finance, St. Louis Fed (FRED) · Educational only, not financial advice · <span id="footer-ts"></span></footer>
+
+<script>
+const GD = {
+  responsive: true, maintainAspectRatio: false,
+  interaction: { mode: 'index', intersect: false },
+  plugins: {
+    legend: { labels: { color: '#c9d1d9', font: { size: 11 }, boxWidth: 12 } },
+    tooltip: { backgroundColor: '#1c2128', borderColor: '#30363d', borderWidth: 1, titleColor: '#f0f6fc', bodyColor: '#c9d1d9' }
+  },
+  scales: {
+    x: { ticks: { color: '#6e7681', maxTicksLimit: 10, font: { size: 10 } }, grid: { color: '#21262d' } },
+    y: { ticks: { color: '#6e7681', font: { size: 10 } }, grid: { color: '#21262d' } }
+  }
+};
+
+function opts(extra) {
+  return { ...GD, ...extra, plugins: { ...GD.plugins, ...(extra.plugins||{}) }, scales: { ...GD.scales, ...(extra.scales||{}) } };
+}
+
+function last2(s) {
+  if (!s || s.length < 2) return { val: null, prev: null };
+  return { val: s[s.length-1].value, prev: s[s.length-2].value };
+}
+
+function setCard(id, val, prev, prefix='', suffix='', dec=2) {
+  const el = document.getElementById('c-'+id);
+  if (el) el.textContent = val !== null ? prefix + val.toLocaleString('en-US', {maximumFractionDigits: dec}) + suffix : '—';
+  const chg = document.getElementById('c-'+id+'-chg');
+  if (chg && val !== null && prev !== null) {
+    const pct = ((val - prev) / Math.abs(prev) * 100).toFixed(1);
+    const up = parseFloat(pct) >= 0;
+    chg.className = 'change ' + (up ? 'up' : 'down');
+    chg.textContent = (up ? '▲ +' : '▼ ') + pct + '% vs prior';
+  }
+}
+
+function toMonthly(series) {
+  const m = {};
+  series.forEach(d => { m[d.date.slice(0,7)] = d.value; });
+  return Object.entries(m).sort().map(([k,v]) => ({ date: k+'-01', value: v }));
+}
+
+function norm(s) {
+  if (!s || !s.length) return s;
+  const base = s[0].value;
+  return s.map(d => ({ date: d.date, value: Math.round(d.value/base*1000)/10 }));
+}
+
+function align(a, b) {
+  const bm = {}; b.forEach(d => bm[d.date] = d.value);
+  const dates=[], va=[], vb=[];
+  a.forEach(d => { if (bm[d.date] !== undefined) { dates.push(d.date.slice(0,7)); va.push(d.value); vb.push(bm[d.date]); } });
+  return { dates, va, vb };
+}
+
+function shortDates(series) { return series.map(d => d.date.slice(0,7)); }
+function vals(series) { return series.map(d => d.value); }
+
+function addAlerts(sp500, umich, dgs2, dgs10, hy) {
+  const box = document.getElementById('alerts');
+  const alerts = [];
+
+  // Yield curve inversion
+  if (dgs2 && dgs10) {
+    const s = dgs2[dgs2.length-1].value, t = dgs10[dgs10.length-1].value;
+    if (s > t) alerts.push({ cls:'alert-red', icon:'🔴', title:`Yield curve inverted (2yr ${s}% > 10yr ${t}%)`, body:'The 2-year yield exceeds the 10-year — historically the strongest recession predictor. Typically leads by 6–18 months.' });
+    else alerts.push({ cls:'alert-green', icon:'🟢', title:`Yield curve normal (2yr ${s}% < 10yr ${t}%)`, body:'No inversion currently. Monitor for the spread narrowing.' });
+  }
+
+  // HY spread
+  if (hy) {
+    const v = hy[hy.length-1].value;
+    if (v > 6) alerts.push({ cls:'alert-red', icon:'🔴', title:`Credit spread elevated (${v}%)`, body:'High-yield spreads above 6% signal credit market stress. Risk-off conditions likely.' });
+    else if (v > 4) alerts.push({ cls:'alert-yellow', icon:'🟡', title:`Credit spread elevated (${v}%)`, body:'Spreads widening. Monitor for further deterioration.' });
+    else alerts.push({ cls:'alert-green', icon:'🟢', title:`Credit spread low (${v}%)`, body:'Credit markets calm. Below 3% = complacency territory — can reverse quickly.' });
+  }
+
+  // Sentiment divergence
+  if (sp500 && umich) {
+    const spn = norm(sp500), umn = norm(umich);
+    const sLast = spn[spn.length-1].value, uLast = umn[umn.length-1].value;
+    const gap = Math.round(sLast - uLast);
+    if (gap > 30) alerts.push({ cls:'alert-red', icon:'🔴', title:`Sentiment-market gap: ${gap} points`, body:`The S&P 500 is ${gap} index points ahead of consumer sentiment (both normalized to 100). A gap this wide historically resolves via market correction, not sentiment recovery.` });
+    else if (gap > 15) alerts.push({ cls:'alert-yellow', icon:'🟡', title:`Sentiment-market gap: ${gap} points`, body:'Moderate divergence. Worth watching.' });
+    else alerts.push({ cls:'alert-green', icon:'🟢', title:`Sentiment-market aligned (gap: ${gap} pts)`, body:'Market and consumer sentiment are relatively in sync.' });
+  }
+
+  box.innerHTML = alerts.map(a => `
+    <div class="alert-box ${a.cls}">
+      <h4>${a.icon} ${a.title}</h4>
+      <p>${a.body}</p>
+    </div>`).join('');
+}
+
+fetch('./data/market_divergence.json')
+  .then(r => r.json())
+  .then(d => {
+    const s = d.series;
+    document.getElementById('status-badge').textContent = 'Live Data';
+    document.getElementById('status-badge').className = 'badge badge-green';
+    const ts = new Date(d.generated).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'});
+    document.getElementById('updated-ts').textContent = 'Fetched: ' + ts;
+    document.getElementById('footer-ts').textContent = 'Data as of ' + ts;
+
+    // Cards
+    const sp=last2(s.sp500), um=last2(s.umich), wt=last2(s.wti), xl=last2(s.xle),
+          dg10=last2(s.dgs10), dg2=last2(s.dgs2), jpy=last2(s.jpy), hy=last2(s.hy), m2=last2(s.m2);
+    setCard('sp500', sp.val, sp.prev, '', '', 0);
+    setCard('umich',  um.val, um.prev, '', '', 1);
+    setCard('wti',    wt.val, wt.prev, '$', '/bbl', 2);
+    setCard('dgs10',  dg10.val, dg10.prev, '', '%', 2);
+    setCard('dgs2',   dg2.val, dg2.prev, '', '%', 2);
+    setCard('jpy',    jpy.val, jpy.prev, '¥', '', 2);
+    setCard('hy',     hy.val, hy.prev, '', '%', 2);
+    setCard('m2',     m2.val, m2.prev, '$', 'B', 0);
+    if (wt.val) document.getElementById('wti-current').textContent = '$' + wt.val.toFixed(2);
+
+    // Alerts
+    addAlerts(s.sp500, s.umich, s.dgs2, s.dgs10, s.hy);
+
+    // Fed funds + T-bill chart
+    if (s.fed_funds && s.tbill_3mo) {
+      const ff = s.fed_funds, tb = s.tbill_3mo;
+      const ffLast = ff[ff.length-1];
+      if (ffLast) document.getElementById('dff-current').textContent = ffLast.value.toFixed(2) + '%';
+      // Align dates
+      const tbMap = {}; tb.forEach(d => tbMap[d.date] = d.value);
+      const fedDates=[], fedVals=[], tbVals=[];
+      ff.forEach(d => { if(tbMap[d.date]) { fedDates.push(d.date.slice(0,7)); fedVals.push(d.value); tbVals.push(tbMap[d.date]); } });
+      new Chart(document.getElementById('chart-fed'), { type:'line', data:{ labels:fedDates, datasets:[
+        {label:'Fed Funds Rate', data:fedVals, borderColor:'#58a6ff', backgroundColor:'rgba(88,166,255,0.08)', fill:true, tension:.2, pointRadius:0, borderWidth:2},
+        {label:'3-Month T-Bill', data:tbVals,  borderColor:'#a371f7', backgroundColor:'rgba(163,113,247,0.06)', fill:true, tension:.2, pointRadius:0, borderWidth:1.5},
+      ]}, options: opts({ scales:{ x:{...GD.scales.x,ticks:{...GD.scales.x.ticks,maxTicksLimit:8}}, y:{...GD.scales.y,title:{display:true,text:'Rate (%)',color:'#8b949e'}} } }) });
+    }
+
+    // Market-set rates chart (2yr/10yr/30yr)
+    if (s.dgs2 && s.dgs10 && s.dgs30) {
+      new Chart(document.getElementById('chart-market-rates'), { type:'line', data:{ labels:shortDates(s.dgs10), datasets:[
+        {label:'2-Year',  data:vals(s.dgs2),  borderColor:'#fbbf24', tension:.2, pointRadius:0, borderWidth:2},
+        {label:'10-Year', data:vals(s.dgs10), borderColor:'#3fb950', tension:.2, pointRadius:0, borderWidth:2.5},
+        {label:'30-Year', data:vals(s.dgs30), borderColor:'#f85149', tension:.2, pointRadius:0, borderWidth:1.5},
+      ]}, options: opts({ scales:{ x:{...GD.scales.x,ticks:{...GD.scales.x.ticks,maxTicksLimit:8}}, y:{...GD.scales.y,title:{display:true,text:'Yield (%)',color:'#8b949e'}} } }) });
+    }
+
+    // Total debt card — live from Treasury Fiscal Data API (browser fetch, no sandbox restriction)
+    fetch('https://api.fiscaldata.treasury.gov/services/api/v1/accounting/od/debt_to_penny?fields=record_date,tot_pub_debt_out_amt&sort=-record_date&limit=400')
+      .then(r => r.json())
+      .then(td => {
+        const rows = td.data;
+        const latest = rows[0];
+        const amt = parseFloat(latest.tot_pub_debt_out_amt);
+        const amtT = (amt / 1e12).toFixed(4);
+        const el = document.getElementById('c-debt');
+        if (el) el.textContent = '$' + (amt/1e12).toFixed(2) + 'T';
+        const sub = document.getElementById('c-debt-sub');
+        if (sub) sub.textContent = 'as of ' + latest.record_date;
+
+        // Build chart from historical rows (reversed to chronological)
+        const chartRows = rows.slice(0, 400).reverse();
+        // Sample monthly (last entry per month)
+        const byMonth = {};
+        chartRows.forEach(r => { byMonth[r.record_date.slice(0,7)] = parseFloat(r.tot_pub_debt_out_amt)/1e12; });
+        const labels = Object.keys(byMonth).sort();
+        const values = labels.map(k => Math.round(byMonth[k]*100)/100);
+
+        new Chart(document.getElementById('chart-total-debt'), { type:'line', data:{
+          labels,
+          datasets: [{ label:'Total Gross Debt ($T)', data: values,
+            borderColor:'#f85149', backgroundColor:'rgba(248,81,73,0.1)', fill:true, tension:.3, pointRadius:0, borderWidth:2
+          }]
+        }, options: opts({
+          plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ' $' + ctx.raw.toFixed(2) + 'T' } } },
+          scales:{ x:{...GD.scales.x,ticks:{...GD.scales.x.ticks,maxTicksLimit:10}}, y:{...GD.scales.y, title:{display:true,text:'Trillions USD',color:'#8b949e'}, ticks:{...GD.scales.y.ticks, callback: v => '$'+v.toFixed(0)+'T'}} }
+        }) });
+      })
+      .catch(() => {
+        // Fallback to FRED quarterly data
+        if (s.total_debt && s.total_debt.length) {
+          const td = s.total_debt;
+          // Show last 10 years for context
+          const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear()-10);
+          const filtered = td.filter(d => new Date(d.date) >= cutoff);
+          const latest = td[td.length-1];
+          const prev   = td[td.length-2];
+          const el = document.getElementById('c-debt');
+          if (el) el.textContent = '$' + latest.value.toFixed(2) + 'T';
+          const sub = document.getElementById('c-debt-sub');
+          if (sub) sub.textContent = 'FRED quarterly · as of ' + latest.date.slice(0,7);
+          new Chart(document.getElementById('chart-total-debt'), { type:'line', data:{
+            labels: filtered.map(d => d.date.slice(0,7)),
+            datasets: [{ label:'Total Gross Debt ($T)', data: filtered.map(d => d.value),
+              borderColor:'#f85149', backgroundColor:'rgba(248,81,73,0.1)', fill:true, tension:.3, pointRadius:3, borderWidth:2
+            }]
+          }, options: opts({
+            plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx=>' $'+ctx.raw.toFixed(3)+'T'}}},
+            scales:{ x:{...GD.scales.x,ticks:{...GD.scales.x.ticks,maxTicksLimit:10}}, y:{...GD.scales.y,title:{display:true,text:'Trillions USD',color:'#8b949e'},ticks:{...GD.scales.y.ticks,callback:v=>'$'+v.toFixed(0)+'T'}} }
+          }) });
+        }
+      });
+
+    // Debt breakdown bar chart
+    if (d.debt_breakdown) {
+      const db = d.debt_breakdown;
+      new Chart(document.getElementById('chart-debt-breakdown'), { type:'bar', data:{
+        labels: db.labels,
+        datasets: [{ label:'Debt Outstanding ($B)', data: db.values, backgroundColor: db.colors, borderRadius: 6 }]
+      }, options: opts({
+        indexAxis: 'y',
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => {
+          const v = ctx.raw;
+          return v >= 1000 ? ' $' + (v/1000).toFixed(1) + 'T' : ' $' + v + 'B';
+        }}}
+        },
+        scales:{ x:{...GD.scales.x,title:{display:true,text:'USD',color:'#8b949e'}, ticks:{...GD.scales.x.ticks, callback: v => v>=1000 ? '$'+(v/1000).toFixed(1)+'T' : '$'+v+'B'}}, y:{...GD.scales.y,ticks:{color:'#c9d1d9',font:{size:11}}} }
+      }) });
+    }
+
+    // Chart: Yield Curve
+    const yDates = shortDates(s.dgs10);
+    new Chart(document.getElementById('chart-yield'), { type:'line', data:{ labels:yDates, datasets:[
+      {label:'3-Month',data:vals(s.dgs3mo),borderColor:'#58a6ff',tension:.3,pointRadius:0,borderWidth:1.5},
+      {label:'2-Year', data:vals(s.dgs2),  borderColor:'#fbbf24',tension:.3,pointRadius:0,borderWidth:1.5},
+      {label:'10-Year',data:vals(s.dgs10), borderColor:'#3fb950',tension:.3,pointRadius:0,borderWidth:2},
+      {label:'30-Year',data:vals(s.dgs30), borderColor:'#f85149',tension:.3,pointRadius:0,borderWidth:1.5},
+    ]}, options: opts({ scales:{ x:GD.scales.x, y:{...GD.scales.y, title:{display:true,text:'Yield (%)',color:'#8b949e'}} } }) });
+
+    // Chart: Sentiment vs S&P
+    const c1 = align(s.sp500_idx, s.umich_idx);
+    new Chart(document.getElementById('chart-sentiment'), { type:'line', data:{ labels:c1.dates, datasets:[
+      {label:'S&P 500 (indexed)',data:c1.va,borderColor:'#3fb950',backgroundColor:'rgba(63,185,80,0.06)',fill:true,tension:.3,pointRadius:1.5},
+      {label:'UMich Sentiment (indexed)',data:c1.vb,borderColor:'#fbbf24',backgroundColor:'rgba(251,191,36,0.06)',fill:true,tension:.3,pointRadius:1.5},
+    ]}, options: opts({ scales:{ x:GD.scales.x, y:{...GD.scales.y,title:{display:true,text:'Index (start=100)',color:'#8b949e'}} } }) });
+
+    // Chart: Oil vs XLE
+    const c2 = align(s.wti_idx, s.xle_idx);
+    new Chart(document.getElementById('chart-oil'), { type:'line', data:{ labels:c2.dates, datasets:[
+      {label:'WTI Crude (indexed)',data:c2.va,borderColor:'#f85149',backgroundColor:'rgba(248,81,73,0.06)',fill:true,tension:.3,pointRadius:1.5},
+      {label:'XLE Energy ETF (indexed)',data:c2.vb,borderColor:'#58a6ff',backgroundColor:'rgba(88,166,255,0.06)',fill:true,tension:.3,pointRadius:1.5},
+    ]}, options: opts({ scales:{ x:GD.scales.x, y:{...GD.scales.y,title:{display:true,text:'Index (start=100)',color:'#8b949e'}} } }) });
+
+    // Chart: WTI raw
+    new Chart(document.getElementById('chart-wti-raw'), { type:'line', data:{ labels:shortDates(s.wti), datasets:[
+      {label:'WTI $/bbl',data:vals(s.wti),borderColor:'#f85149',backgroundColor:'rgba(248,81,73,0.08)',fill:true,tension:.3,pointRadius:1.5},
+    ]}, options: opts({ scales:{ x:GD.scales.x, y:{...GD.scales.y,title:{display:true,text:'USD/barrel',color:'#8b949e'}} } }) });
+
+    // Chart: Debt/GDP
+    if (s.debt && s.gdp) {
+      const debtM = toMonthly(s.debt); // quarterly, already monthly-ish
+      const gdpMap = {}; s.gdp.forEach(d => gdpMap[d.date.slice(0,7)] = d.value);
+      const debtGDP = s.debt.filter(d => gdpMap[d.date.slice(0,7)]).map(d => ({
+        date: d.date,
+        value: Math.round(d.value / gdpMap[d.date.slice(0,7)] / 10) / 100  // debt in millions, GDP in billions
+      }));
+      new Chart(document.getElementById('chart-debt'), { type:'line', data:{ labels:debtGDP.map(d=>d.date.slice(0,7)), datasets:[
+        {label:'Debt-to-GDP (%)',data:debtGDP.map(d=>d.value),borderColor:'#fbbf24',backgroundColor:'rgba(251,191,36,0.08)',fill:true,tension:.3,pointRadius:3},
+      ]}, options: opts({ scales:{ x:GD.scales.x, y:{...GD.scales.y,title:{display:true,text:'Debt as % of GDP',color:'#8b949e'}} } }) });
+    }
+
+    // Chart: JPY
+    new Chart(document.getElementById('chart-jpy'), { type:'line', data:{ labels:shortDates(s.jpy), datasets:[
+      {label:'USD/JPY',data:vals(s.jpy),borderColor:'#a371f7',backgroundColor:'rgba(163,113,247,0.08)',fill:true,tension:.3,pointRadius:0,borderWidth:1.5},
+    ]}, options: opts({ scales:{ x:GD.scales.x, y:{...GD.scales.y,title:{display:true,text:'Yen per Dollar',color:'#8b949e'}} } }) });
+
+    // Chart: HY Credit Spread
+    new Chart(document.getElementById('chart-hy'), { type:'line', data:{ labels:shortDates(s.hy), datasets:[
+      {label:'HY OAS (%)',data:vals(s.hy),borderColor:'#f85149',backgroundColor:'rgba(248,81,73,0.08)',fill:true,tension:.3,pointRadius:0,borderWidth:1.5},
+    ]}, options: opts({ scales:{ x:GD.scales.x, y:{...GD.scales.y,title:{display:true,text:'Spread (%)',color:'#8b949e'}} } }) });
+
+    // Charts: Foreign Holdings (TIC)
+    if (d.series && d.series.tic_snapshot) {
+      const snap = d.series.tic_snapshot;
+      const ticLabels = Object.keys(snap);
+      const ticVals   = Object.values(snap);
+      const ticColors = ['#58a6ff','#f85149','#fbbf24','#3fb950','#a371f7','#79c0ff','#d29922','#56d364'];
+
+      // Bar chart: current snapshot
+      new Chart(document.getElementById('chart-tic-bar'), { type:'bar', data:{
+        labels: ticLabels,
+        datasets: [{ label:'Holdings ($B)', data: ticVals, backgroundColor: ticColors, borderRadius: 4 }]
+      }, options: opts({ plugins:{ legend:{display:false}, tooltip:{...GD.plugins.tooltip} }, scales:{ x:{...GD.scales.x, ticks:{...GD.scales.x.ticks, maxRotation:30}}, y:{...GD.scales.y, title:{display:true,text:'Billions USD',color:'#8b949e'}} } }) });
+
+      // Line chart: Japan vs China over time
+      const ticDates = d.series.tic_dates || [];
+      const ticH = d.series.tic_holdings || {};
+      if (ticH['Japan'] && ticH['China, Mainland']) {
+        new Chart(document.getElementById('chart-tic-line'), { type:'line', data:{ labels: ticDates, datasets:[
+          {label:'Japan',         data: ticH['Japan'],           borderColor:'#58a6ff', tension:.3, pointRadius:3, borderWidth:2},
+          {label:'China',         data: ticH['China, Mainland'], borderColor:'#f85149', tension:.3, pointRadius:3, borderWidth:2},
+          {label:'United Kingdom',data: ticH['United Kingdom'],  borderColor:'#fbbf24', tension:.3, pointRadius:2, borderWidth:1.5},
+        ]}, options: opts({ scales:{ x:GD.scales.x, y:{...GD.scales.y,title:{display:true,text:'Billions USD',color:'#8b949e'}} } }) });
+      }
+
+      // Bar chart: net change
+      const changes = ticLabels.map((c,i) => {
+        const series = d.series.tic_holdings[c];
+        if (!series || series.length < 2) return 0;
+        return Math.round((series[series.length-1] - series[0]) * 10) / 10;
+      });
+      new Chart(document.getElementById('chart-tic-trend'), { type:'bar', data:{
+        labels: ticLabels,
+        datasets: [{ label:'Change in Holdings ($B)', data: changes,
+          backgroundColor: changes.map(v => v >= 0 ? 'rgba(63,185,80,0.7)' : 'rgba(248,81,73,0.7)'),
+          borderRadius: 4 }]
+      }, options: opts({ plugins:{legend:{display:false}}, scales:{ x:{...GD.scales.x,ticks:{...GD.scales.x.ticks,maxRotation:30}}, y:{...GD.scales.y,title:{display:true,text:'Change in $B',color:'#8b949e'}} } }) });
+    }
+
+    // Chart: M2
+    new Chart(document.getElementById('chart-m2'), { type:'line', data:{ labels:shortDates(s.m2), datasets:[
+      {label:'M2 ($B)',data:vals(s.m2),borderColor:'#58a6ff',backgroundColor:'rgba(88,166,255,0.08)',fill:true,tension:.3,pointRadius:2},
+    ]}, options: opts({ scales:{ x:GD.scales.x, y:{...GD.scales.y,title:{display:true,text:'Billions USD',color:'#8b949e'}} } }) });
+
+  })
+  .catch(err => {
+    document.getElementById('status-badge').textContent = 'Load Error';
+    document.getElementById('status-badge').className = 'badge badge-red';
+    console.error(err);
+  });
+</script>
+</body>
+</html>
