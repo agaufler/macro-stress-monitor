@@ -246,7 +246,12 @@ function opts(extra) {
 
 function last2(s) {
   if (!s || s.length < 2) return { val: null, prev: null };
-  return { val: s[s.length-1].value, prev: s[s.length-2].value };
+  // Deduplicate by month — keep last entry per month
+  const byMonth = {};
+  s.forEach(d => { byMonth[d.date.slice(0,7)] = d.value; });
+  const months = Object.keys(byMonth).sort();
+  if (months.length < 2) return { val: null, prev: null };
+  return { val: byMonth[months[months.length-1]], prev: byMonth[months[months.length-2]] };
 }
 
 function setCard(id, val, prev, prefix='', suffix='', dec=2) {
