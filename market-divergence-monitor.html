@@ -525,8 +525,9 @@ fetch('./data/market_divergence.json')
         {label:'Japan borrow rate % (3mo interbank)', data:bojVals, borderColor:'#2dd4bf', fill:false, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'y2'},
       ]}, options: opts({ scales:{
         x: GD.scales.x,
-        y:  {...GD.scales.y, position:'left',  title:{display:true, text:'Yen per Dollar', color:'#a371f7'}},
-        y2: {...GD.scales.y, position:'right', title:{display:true, text:'Japan Rate %', color:'#2dd4bf'}, grid:{drawOnChartArea:false}, min:0, max:3}
+        y:  {...GD.scales.y, position:'left',  title:{display:true, text:'Yen per Dollar', color:'#a371f7'}, grace:'5%'},
+        y2: {...GD.scales.y, position:'right', title:{display:true, text:'Japan Rate %', color:'#2dd4bf'}, grid:{drawOnChartArea:false}, min:0, max:3,
+          ticks:{...GD.scales.y.ticks, callback: v => v+'%'}}
       }}) });
     }
 
