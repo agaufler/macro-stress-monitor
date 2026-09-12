@@ -98,6 +98,7 @@ m2      = fred("M2SL");      time.sleep(0.3)
 hy      = fred("BAMLH0A0HYM2"); time.sleep(0.3)
 debt_q  = fred("GFDEBTN");   time.sleep(0.3)
 gdp     = fred("GDPC1");     time.sleep(0.3)
+boj     = fred("IR3TIB01JPM156N"); time.sleep(0.3)
 
 print("Fetching TIC holdings...")
 try:
@@ -124,6 +125,7 @@ out = {
         "fed_funds": to_monthly(dff),
         "tbill_3mo": to_monthly(dtb3),
         "jpy":  to_monthly(jpy),
+        "boj_rate": to_monthly(boj),
         "m2":   m2,
         "hy":   to_monthly(hy),
         "debt": debt_q,

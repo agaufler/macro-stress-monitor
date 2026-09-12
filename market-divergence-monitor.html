@@ -181,8 +181,12 @@ footer { text-align: center; padding: 1.5rem; font-size: 0.78rem; color: #4a5568
   <div class="section-label">🌏 Global Risk Signals</div>
   <div class="grid2">
     <div class="chart-section">
-      <h2>USD/JPY — Yen Carry Trade Signal</h2>
-      <div class="desc">Japan's low interest rates let traders borrow cheap yen, invest in higher-yield assets. When JPY strengthens rapidly (USD/JPY falls), the carry trade unwinds — triggering global sell-offs. Aug 2024 was a warning shot.</div>
+      <h2>USD/JPY vs. Japan Borrow Rate — Carry Trade Signal</h2>
+      <div class="desc">
+        <strong>Purple (left axis)</strong> = USD/JPY exchange rate — how many yen per dollar. Higher = weaker yen = carry trade still alive.
+        <strong>Teal (right axis)</strong> = Japan 3-month interbank rate — the actual cost to borrow yen. Near zero for decades; rising now.
+        When borrow rate rises AND yen strengthens (USD/JPY drops) simultaneously = carry trade unwinding. That's the danger signal. Aug 2024 was a preview.
+      </div>
       <div class="chart-wrap"><canvas id="chart-jpy"></canvas></div>
     </div>
     <div class="chart-section">
@@ -506,9 +510,25 @@ fetch('./data/market_divergence.json')
     }
 
     // Chart: JPY
-    new Chart(document.getElementById('chart-jpy'), { type:'line', data:{ labels:shortDates(s.jpy), datasets:[
-      {label:'USD/JPY',data:vals(s.jpy),borderColor:'#a371f7',backgroundColor:'rgba(163,113,247,0.08)',fill:true,tension:.3,pointRadius:0,borderWidth:1.5},
-    ]}, options: opts({ scales:{ x:GD.scales.x, y:{...GD.scales.y,title:{display:true,text:'Yen per Dollar',color:'#8b949e'}} } }) });
+    {
+      // Align JPY and BOJ rate by month
+      const jpyMap = {}, bojMap = {};
+      (s.jpy||[]).forEach(d => jpyMap[d.date.slice(0,7)] = d.value);
+      (s.boj_rate||[]).forEach(d => bojMap[d.date.slice(0,7)] = d.value);
+      const jpyMonths = [...new Set([...Object.keys(jpyMap),...Object.keys(bojMap)])].sort();
+      const jpyVals = jpyMonths.map(m => jpyMap[m] ?? null);
+      const bojVals = jpyMonths.map(m => bojMap[m] ?? null);
+      const bojLast = s.boj_rate && s.boj_rate[s.boj_rate.length-1];
+
+      new Chart(document.getElementById('chart-jpy'), { type:'line', data:{ labels:jpyMonths, datasets:[
+        {label:'USD/JPY (yen per dollar)', data:jpyVals, borderColor:'#a371f7', fill:false, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'y'},
+        {label:'Japan borrow rate % (3mo interbank)', data:bojVals, borderColor:'#2dd4bf', fill:false, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'y2'},
+      ]}, options: opts({ scales:{
+        x: GD.scales.x,
+        y:  {...GD.scales.y, position:'left',  title:{display:true, text:'Yen per Dollar', color:'#a371f7'}},
+        y2: {...GD.scales.y, position:'right', title:{display:true, text:'Japan Rate %', color:'#2dd4bf'}, grid:{drawOnChartArea:false}, min:0, max:3}
+      }}) });
+    }
 
     // Chart: HY Credit Spread
     new Chart(document.getElementById('chart-hy'), { type:'line', data:{ labels:shortDates(s.hy), datasets:[
