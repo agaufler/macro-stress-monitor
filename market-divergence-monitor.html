@@ -159,11 +159,11 @@ footer { text-align: center; padding: 1.5rem; font-size: 0.78rem; color: #4a5568
   <!-- Section 3: Oil -->
   <div class="section-label">🛢️ Energy Markets</div>
   <div class="chart-section">
-    <h2>Brent Futures vs. WTI Spot vs. XLE Energy Stocks (Indexed to 100)</h2>
+    <h2>Brent (Paper) vs. WTI Spot (Physical) — Price Per Barrel · XLE Per Share</h2>
     <div class="desc">
-      Three lines that should move together — but often don't. <strong>Brent</strong> (international benchmark, more speculative/paper) · <strong>WTI Spot</strong> (US physical delivery price, the "real" oil price) · <strong>XLE</strong> (what Wall Street thinks energy companies are worth).
-      When Brent runs above WTI = speculation driving paper prices above physical reality. When XLE diverges from both = stocks detached from the commodity. All three converge eventually.
-      Current: Brent <span id="brent-current">—</span> · WTI <span id="wti-current">—</span>/bbl
+      <strong>Brent</strong> (yellow) = international/paper price · <strong>WTI</strong> (red) = US physical delivery price · <strong>XLE</strong> (blue) = energy stock ETF price per share.
+      Brent and WTI are in $/barrel (left axis). XLE is in $/share (right axis). When Brent runs far above WTI = speculation premium. When XLE detaches from oil = stocks pricing in a different reality.
+      Current: Brent <span id="brent-current">—</span>/bbl · WTI <span id="wti-current">—</span>/bbl · XLE <span id="xle-current">—</span>/share
     </div>
     <div class="chart-wrap" style="height:340px"><canvas id="chart-oil"></canvas></div>
   </div>
@@ -461,40 +461,35 @@ fetch('./data/market_divergence.json')
       {label:'UMich Sentiment (indexed)',data:c1.vb,borderColor:'#fbbf24',backgroundColor:'rgba(251,191,36,0.06)',fill:true,tension:.3,pointRadius:1.5},
     ]}, options: opts({ scales:{ x:GD.scales.x, y:{...GD.scales.y,title:{display:true,text:'Index (start=100)',color:'#8b949e'}} } }) });
 
-    // Chart: Brent + WTI Spot + XLE — all three indexed
-    if (s.brent_idx) {
-      // Show current raw prices
+    // Chart: Brent + WTI Spot (left axis $/bbl) + XLE (right axis $/share)
+    {
       const brentLast = s.brent && s.brent[s.brent.length-1];
       const wtiLast   = s.wti   && s.wti[s.wti.length-1];
+      const xleLast   = s.xle   && s.xle[s.xle.length-1];
       if (brentLast) document.getElementById('brent-current').textContent = '$'+brentLast.value.toFixed(2);
       if (wtiLast)   document.getElementById('wti-current').textContent   = '$'+wtiLast.value.toFixed(2);
+      const xleEl = document.getElementById('xle-current');
+      if (xleEl && xleLast) xleEl.textContent = '$'+xleLast.value.toFixed(2);
 
-      // Align all three to common dates
+      // Align by month
       const bMap = {}, wMap = {}, xMap = {};
-      s.brent_idx.forEach(d => bMap[d.date] = d.value);
-      s.wti_idx.forEach(d =>   wMap[d.date] = d.value);
-      s.xle_idx.forEach(d =>   xMap[d.date] = d.value);
-      const allDates = [...new Set([...Object.keys(bMap), ...Object.keys(wMap), ...Object.keys(xMap)])].sort();
-      const oilDates = allDates.map(d => d.slice(0,7));
-      const bVals = allDates.map(d => bMap[d] ?? null);
-      const wVals = allDates.map(d => wMap[d] ?? null);
-      const xVals = allDates.map(d => xMap[d] ?? null);
+      (s.brent||[]).forEach(d => bMap[d.date.slice(0,7)] = d.value);
+      (s.wti||[]).forEach(d =>   wMap[d.date.slice(0,7)] = d.value);
+      (s.xle||[]).forEach(d =>   xMap[d.date.slice(0,7)] = d.value);
+      const allMonths = [...new Set([...Object.keys(bMap),...Object.keys(wMap),...Object.keys(xMap)])].sort();
+      const bVals = allMonths.map(m => bMap[m] ?? null);
+      const wVals = allMonths.map(m => wMap[m] ?? null);
+      const xVals = allMonths.map(m => xMap[m] ?? null);
 
-      new Chart(document.getElementById('chart-oil'), { type:'line', data:{ labels:oilDates, datasets:[
-        {label:'Brent (paper/futures proxy)', data:bVals, borderColor:'#fbbf24', backgroundColor:'rgba(251,191,36,0.06)', fill:false, tension:.3, pointRadius:0, borderWidth:2},
-        {label:'WTI Spot (physical/real)',     data:wVals, borderColor:'#f85149', backgroundColor:'rgba(248,81,73,0.06)',  fill:false, tension:.3, pointRadius:0, borderWidth:2},
-        {label:'XLE Energy Stocks',            data:xVals, borderColor:'#58a6ff', backgroundColor:'rgba(88,166,255,0.06)', fill:false, tension:.3, pointRadius:0, borderWidth:2},
+      new Chart(document.getElementById('chart-oil'), { type:'line', data:{ labels:allMonths, datasets:[
+        {label:'Brent $/bbl (paper)',   data:bVals, borderColor:'#fbbf24', fill:false, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'y'},
+        {label:'WTI $/bbl (physical)',  data:wVals, borderColor:'#f85149', fill:false, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'y'},
+        {label:'XLE $/share',           data:xVals, borderColor:'#58a6ff', fill:false, tension:.3, pointRadius:0, borderWidth:2, yAxisID:'y2'},
       ]}, options: opts({ scales:{
-        x:{...GD.scales.x,ticks:{...GD.scales.x.ticks,maxTicksLimit:10}},
-        y:{...GD.scales.y,title:{display:true,text:'Index (start = 100)',color:'#8b949e'}}
+        x: {...GD.scales.x, ticks:{...GD.scales.x.ticks, maxTicksLimit:10}},
+        y:  {...GD.scales.y, position:'left',  title:{display:true, text:'$/barrel',color:'#8b949e'}},
+        y2: {...GD.scales.y, position:'right', title:{display:true, text:'XLE $/share',color:'#58a6ff'}, grid:{drawOnChartArea:false}}
       }}) });
-    } else {
-      // fallback: WTI vs XLE only
-      const c2 = align(s.wti_idx, s.xle_idx);
-      new Chart(document.getElementById('chart-oil'), { type:'line', data:{ labels:c2.dates, datasets:[
-        {label:'WTI Spot (indexed)',data:c2.va,borderColor:'#f85149',fill:false,tension:.3,pointRadius:0,borderWidth:2},
-        {label:'XLE (indexed)',     data:c2.vb,borderColor:'#58a6ff',fill:false,tension:.3,pointRadius:0,borderWidth:2},
-      ]}, options: opts({ scales:{ x:GD.scales.x, y:{...GD.scales.y,title:{display:true,text:'Index (start=100)',color:'#8b949e'}} } }) });
     }
 
     // Chart: Debt/GDP
