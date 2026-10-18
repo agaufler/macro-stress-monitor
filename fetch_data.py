@@ -41,14 +41,22 @@ def yahoo_monthly(symbol):
     return out
 
 def fred(sid):
-    raw = fetch(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={sid}")
+    key = os.environ["FRED_API_KEY"].strip()
+    url = (
+        "https://api.stlouisfed.org/fred/series/observations"
+        f"?series_id={sid}&api_key={key}"
+        f"&file_type=json&observation_start={CUTOFF}"
+    )
+    data = json.loads(fetch(url))
     out = []
-    for line in raw.strip().split("\n")[1:]:
-        parts = line.split(",")
-        if len(parts) < 2: continue
-        date, val = parts[0].strip(), parts[1].strip()
-        if val in ("", ".", "NA") or date < CUTOFF: continue
-        out.append({"date": date, "value": round(float(val), 4)})
+    for item in data["observations"]:
+        val = item["value"]
+        if val in ("", ".", "NA"):
+            continue
+        out.append({
+            "date": item["date"],
+            "value": round(float(val), 4)
+        })
     return out
 
 def to_monthly(series):
