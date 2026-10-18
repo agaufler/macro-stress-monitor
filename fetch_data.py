@@ -15,9 +15,15 @@ YEARS = 5
 CUTOFF = (datetime.datetime.now() - datetime.timedelta(days=365*YEARS)).strftime("%Y-%m-%d")
 
 def fetch(url):
-    req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=20) as r:
-        return r.read().decode("utf-8")
+    for attempt in range(3):
+        req = urllib.request.Request(url, headers=UA)
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return r.read().decode("utf-8")
+        except TimeoutError:
+            if attempt == 2:
+                raise
+            time.sleep(2 ** attempt)
 
 def yahoo_monthly(symbol):
     end = int(datetime.datetime.now().timestamp())
